@@ -1,0 +1,7 @@
+{
+  "bos_token": "<protein>",
+  "eos_token": "</protein>",
+  "mask_token": "<mask>",
+  "pad_token": "<pad>",
+  "unk_token": "<unk>"
+}
