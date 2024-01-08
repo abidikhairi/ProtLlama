@@ -3,8 +3,8 @@ import torch
 from torch import nn
 
 from transformers import PreTrainedModel, LlamaConfig, LlamaModel
-from transformers.activations import ACT2FN 
-from transformers.modeling_outputs import MaskedLMOutput
+from transformers.activations import ACT2FN
+from transformers.modeling_outputs import MaskedLMOutput, BaseModelOutputWithPast
 
 
 class LlamaPredictionHeadTransform(nn.Module):
@@ -15,7 +15,8 @@ class LlamaPredictionHeadTransform(nn.Module):
             self.transform_act_fn = ACT2FN[config.hidden_act]
         else:
             self.transform_act_fn = config.hidden_act
-        self.layer_norm = nn.LayerNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.layer_norm = nn.LayerNorm(
+            config.hidden_size, eps=config.rms_norm_eps)
 
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         hidden_states = self.dense(hidden_states)
@@ -23,18 +24,21 @@ class LlamaPredictionHeadTransform(nn.Module):
         hidden_states = self.layer_norm(hidden_states)
         return hidden_states
 
+
 class LlamaLMPredictionHead(nn.Module):
     def __init__(self, config):
         super().__init__()
 
         self.transform = LlamaPredictionHeadTransform(config)
-        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.decoder = nn.Linear(
+            config.hidden_size, config.vocab_size, bias=False)
 
     def forward(self, hidden_states):
         hidden_states = self.transform(hidden_states)
         hidden_states = self.decoder(hidden_states)
         return hidden_states
-    
+
+
 class LlamaOnlyMLMHead(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -43,9 +47,11 @@ class LlamaOnlyMLMHead(nn.Module):
     def forward(self, sequence_output: torch.Tensor) -> torch.Tensor:
         prediction_scores = self.predictions(sequence_output)
         return prediction_scores
-    
+
 
 class LlamaForMaskedLM(PreTrainedModel):
+
+    config_class = LlamaConfig
 
     def __init__(self, config):
         super().__init__(config)
@@ -60,17 +66,21 @@ class LlamaForMaskedLM(PreTrainedModel):
         self.cls = LlamaOnlyMLMHead(config)
         self.post_init()
 
+    @torch.no_grad()
+    def embeddings(self, input_ids: Optional[torch.Tensor] = None,
+                   attention_mask: Optional[torch.Tensor] = None) -> BaseModelOutputWithPast:
+
+        return self.llama(
+            input_ids,
+            attention_mask=attention_mask
+        )
 
     def forward(
         self,
         input_ids: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
-        token_type_ids: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.Tensor] = None,
-        head_mask: Optional[torch.Tensor] = None,
         inputs_embeds: Optional[torch.Tensor] = None,
-        encoder_hidden_states: Optional[torch.Tensor] = None,
-        encoder_attention_mask: Optional[torch.Tensor] = None,
         labels: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
@@ -88,14 +98,15 @@ class LlamaForMaskedLM(PreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        
+
         sequence_output = outputs[0]
         prediction_scores = self.cls(sequence_output)
 
         masked_lm_loss = None
         if labels is not None:
             loss_fct = nn.CrossEntropyLoss()  # -100 index = padding token
-            masked_lm_loss = loss_fct(prediction_scores.view(-1, self.config.vocab_size), labels.view(-1))
+            masked_lm_loss = loss_fct(
+                prediction_scores.view(-1, self.config.vocab_size), labels.view(-1))
 
         if not return_dict:
             output = (prediction_scores,) + outputs[2:]
