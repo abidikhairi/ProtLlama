@@ -22,7 +22,7 @@ def main(save_path: str, text_file: str):
     special_tokens = [annotation_start_token, annotation_end_token, pad_token, unk_token]
     initial_alphabet = ['cellular_component', 'biological_process', 'molecular_function']
 
-    tokenizer = Tokenizer(models.BPE(unk_token=unk_token))
+    tokenizer = Tokenizer(models.WordPiece(unk_token=unk_token))
     
     tokenizer.normalizer = normalizers.Sequence(
         [normalizers.NFD(), normalizers.Lowercase(), normalizers.StripAccents()]
@@ -30,8 +30,8 @@ def main(save_path: str, text_file: str):
     
     tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
 
-    trainer = trainers.BpeTrainer(initial_alphabet=initial_alphabet, show_progress=True,
-                                  special_tokens=special_tokens)
+    trainer = trainers.WordPieceTrainer(initial_alphabet=initial_alphabet, show_progress=True,
+                                  special_tokens=special_tokens, vocab_size=10000)
 
     tokenizer.train_from_iterator(text_file_iterator(
         df, "value"), trainer=trainer, length=len(df))
@@ -55,8 +55,10 @@ def main(save_path: str, text_file: str):
     loaded_tknzr = PreTrainedTokenizerFast.from_pretrained(save_path)
     print(loaded_tknzr)
 
-    print(loaded_tknzr('biological_process membrane raft assembly'))
     print(tokenizer.encode('biological_process membrane raft assembly').tokens)
+    print(tokenizer.encode('biological_process regulation of systemic arterial blood pressure by norepinephrine-epinephrine').tokens)
+    print(tokenizer.encode('biological_process 2-oxoglutarate metabolic process').tokens)
+    print(tokenizer.encode('molecular_function high-affinity L-arginine transmembrane transporter activity').tokens)
 
 
 if __name__ == '__main__':
