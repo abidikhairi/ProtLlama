@@ -9,7 +9,7 @@ from tqdm import tqdm
 from prot_llama.lm_modeling import LlamaForMaskedLM
 
 def main():
-    pretrained_model_path = "data/artifacts/checkpoint-prot_llama:v64"
+    pretrained_model_path = "data/artifacts/checkpoint-prot_llama:v157"
     tokenizer_path = "artifacts/protein_tokenizer"
     protein_sequences_file = "data/uniprot/uniprotkb_sequence_AND_superkingdom.tsv"
     
