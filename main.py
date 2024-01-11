@@ -37,18 +37,19 @@ def main():
     vocab_size = tokenizer.vocab_size
     bos_token_id = tokenizer.bos_token_id
     eos_token_id = tokenizer.eos_token_id
+    pad_token_id = tokenizer.pad_token_id
 
     config = LlamaConfig(is_decoder=False, hidden_size=d_model, num_attention_heads=num_attention_heads,
                          num_hidden_layers=num_hidden_layers, num_key_value_heads=num_key_value_heads,
                          max_position_embeddings=35000, intermediate_size=intermediate_size,
                          attention_dropout=attention_dropout,
                          vocab_size=vocab_size, bos_token_id=bos_token_id, eos_token_id=eos_token_id,
-                         use_cache=False)
+                         use_cache=False, pad_token_id=pad_token_id)
 
     model = LlamaForMaskedLM(config)
 
     training_args = TrainingArguments(
-        output_dir="outputs/prot_llama_mlm",
+        output_dir="outputs/prot_llama",
         overwrite_output_dir=True,
         evaluation_strategy="steps",
         save_strategy="steps",
@@ -70,7 +71,7 @@ def main():
         data_collator=data_collator,
     )
 
-    trainer.train()
+    trainer.train(resume_from_checkpoint=True)
 
     results = trainer.evaluate()
     print(results)
