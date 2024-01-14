@@ -4,18 +4,18 @@ from transformers import Trainer, TrainingArguments
 from transformers import LlamaConfig, PreTrainedTokenizerFast, DataCollatorForLanguageModeling
 from datasets import Dataset
 
-from prot_llama.lm_modeling import LlamaForMaskedLM
+from prot_llama.lm_modeling import ProtLlamaForMaskedLM
 
-os.environ["WANDB_PROJECT"] = "hunayn"
-os.environ["WANDB_LOG_MODEL"] = "checkpoint"
+os.environ["WANDB_PROJECT"] = "prot_llama"
+os.environ["WANDB_LOG_MODEL"] = "end"
 
 def main():
     ## Load Protein tokenizer
     tokenizer = PreTrainedTokenizerFast.from_pretrained('artifacts/protein_tokenizer')
 
     ## Start Prepare data
-    train_df = pd.read_csv("data/uniprot/encoder_training_data.tsv", names=['Sequence'])
-    valid_df = pd.read_csv("data/uniprot/encoder_training_data.tsv", names=['Sequence'])
+    train_df = pd.read_csv("data/uniprot/sample_train.tsv", names=['Sequence'])
+    valid_df = pd.read_csv("data/uniprot/sample_valid.tsv", names=['Sequence'])
     
     train_data = Dataset.from_pandas(train_df)
     valid_data = Dataset.from_pandas(valid_df)
@@ -46,7 +46,7 @@ def main():
                          vocab_size=vocab_size, bos_token_id=bos_token_id, eos_token_id=eos_token_id,
                          use_cache=False, pad_token_id=pad_token_id)
 
-    model = LlamaForMaskedLM(config)
+    model = ProtLlamaForMaskedLM(config)
 
     training_args = TrainingArguments(
         output_dir="outputs/prot_llama",
@@ -59,7 +59,8 @@ def main():
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
         do_train=True,
-        report_to="wandb",
+        report_to="none",
+        #report_to="wandb",
         run_name="prot_llama"
     )
 
@@ -71,7 +72,8 @@ def main():
         data_collator=data_collator,
     )
 
-    trainer.train(resume_from_checkpoint=True)
+    #trainer.train(resume_from_checkpoint=True)
+    trainer.train()
 
     results = trainer.evaluate()
     print(results)

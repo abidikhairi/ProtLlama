@@ -1,13 +1,19 @@
+"""Llama for Masked Language Modeling"""
+import logging
 from typing import Optional, Tuple, Union
 import torch
 from torch import nn
 
-from transformers import PreTrainedModel, LlamaConfig, LlamaModel
+from transformers import PreTrainedModel, LlamaConfig
 from transformers.activations import ACT2FN
 from transformers.modeling_outputs import MaskedLMOutput, BaseModelOutputWithPast
 
+from prot_llama.modeling_llama import ProtLlamaEncoder
 
-class LlamaPredictionHeadTransform(nn.Module):
+logger = logging.getLogger(__name__)
+
+
+class ProtLlamaPredictionHeadTransform(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.dense = nn.Linear(config.hidden_size, config.hidden_size)
@@ -25,11 +31,11 @@ class LlamaPredictionHeadTransform(nn.Module):
         return hidden_states
 
 
-class LlamaLMPredictionHead(nn.Module):
+class ProtLlamaLMPredictionHead(nn.Module):
     def __init__(self, config):
         super().__init__()
 
-        self.transform = LlamaPredictionHeadTransform(config)
+        self.transform = ProtLlamaPredictionHeadTransform(config)
         self.decoder = nn.Linear(
             config.hidden_size, config.vocab_size, bias=False)
 
@@ -39,17 +45,17 @@ class LlamaLMPredictionHead(nn.Module):
         return hidden_states
 
 
-class LlamaOnlyMLMHead(nn.Module):
+class ProtLlamaOnlyMLMHead(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.predictions = LlamaLMPredictionHead(config)
+        self.predictions = ProtLlamaLMPredictionHead(config)
 
     def forward(self, sequence_output: torch.Tensor) -> torch.Tensor:
         prediction_scores = self.predictions(sequence_output)
         return prediction_scores
 
 
-class LlamaForMaskedLM(PreTrainedModel):
+class ProtLlamaForMaskedLM(PreTrainedModel):
 
     config_class = LlamaConfig
 
@@ -62,15 +68,15 @@ class LlamaForMaskedLM(PreTrainedModel):
                 "bi-directional self-attention."
             )
 
-        self.llama = LlamaModel(config)
-        self.cls = LlamaOnlyMLMHead(config)
+        self.prot_llama = ProtLlamaEncoder(config)
+        self.cls = ProtLlamaOnlyMLMHead(config)
         self.post_init()
 
     @torch.no_grad()
     def embeddings(self, input_ids: Optional[torch.Tensor] = None,
                    attention_mask: Optional[torch.Tensor] = None) -> BaseModelOutputWithPast:
 
-        return self.llama(
+        return self.prot_llama(
             input_ids,
             attention_mask=attention_mask
         )
@@ -89,7 +95,7 @@ class LlamaForMaskedLM(PreTrainedModel):
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        outputs = self.llama(
+        outputs = self.prot_llama(
             input_ids,
             attention_mask=attention_mask,
             position_ids=position_ids,
