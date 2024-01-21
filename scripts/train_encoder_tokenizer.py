@@ -1,6 +1,6 @@
 """Train a tokenizer"""
 import argparse
-from tokenizers import Tokenizer, processors, models, trainers
+from tokenizers import Tokenizer, processors, models, trainers, pre_tokenizers
 from transformers import PreTrainedTokenizerFast
 
 
@@ -49,7 +49,7 @@ def main(save_path: str, text_file: str):
     amino_acids = list("ACDEFGHIKLMNPQRSTVWY")
 
     protein_start_token = '<protein>'
-    protein_end_token = '</protein>'
+    protein_end_token = '<sep>'
     pad_token = '<pad>'
     unk_token = '<unk>'
     mask_token = '<mask>'
@@ -58,6 +58,7 @@ def main(save_path: str, text_file: str):
 
     special_tokens = [protein_start_token, protein_end_token,pad_token, unk_token, mask_token]
 
+    tokenizer.pre_tokenizer = pre_tokenizers.Split(pattern='', behavior='isolated')
 
     trainer = trainers.BpeTrainer(initial_alphabet=amino_acids, show_progress=True,
                                   special_tokens=special_tokens)
@@ -68,10 +69,11 @@ def main(save_path: str, text_file: str):
     tokenizer.enable_padding(direction="right", pad_id=tokenizer.token_to_id("<pad>"), pad_token=pad_token)
     
     protein_start_token_id = tokenizer.token_to_id('<protein>')
-    protein_end_token_id = tokenizer.token_to_id('</protein>')
+    protein_end_token_id = tokenizer.token_to_id('<sep>')
 
     tokenizer.post_processor = processors.TemplateProcessing(
-        single="<protein>:0 $A:0 </protein>",
+        single="<protein>:0 $A:0 <sep>:0",
+        pair="<protein>:0 $A:0 <sep>:0 $B:1 <sep>:1",
         special_tokens=[(protein_start_token, protein_start_token_id), (protein_end_token, protein_end_token_id)],
     )
 
@@ -82,7 +84,7 @@ def main(save_path: str, text_file: str):
     trained_tokenizer.save_pretrained(save_path)
 
     loaded_tknzr = PreTrainedTokenizerFast.from_pretrained(save_path)
-    print(loaded_tknzr)
+    print(loaded_tknzr("ABBBCFDD", "ABHGRRDFQ"))
 
 
 if __name__ == '__main__':

@@ -3,7 +3,7 @@
   "truncation": null,
   "padding": {
     "strategy": "BatchLongest",
-    "direction": "Left",
+    "direction": "Right",
     "pad_to_multiple_of": null,
     "pad_id": 2,
     "pad_type_id": 0,
@@ -21,7 +21,7 @@
     },
     {
       "id": 1,
-      "content": "</protein>",
+      "content": "<sep>",
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
@@ -75,15 +75,27 @@
       },
       {
         "SpecialToken": {
-          "id": "</protein>",
+          "id": "<sep>",
           "type_id": 0
         }
       }
     ],
     "pair": [
       {
+        "SpecialToken": {
+          "id": "<protein>",
+          "type_id": 0
+        }
+      },
+      {
         "Sequence": {
           "id": "A",
+          "type_id": 0
+        }
+      },
+      {
+        "SpecialToken": {
+          "id": "<sep>",
           "type_id": 0
         }
       },
@@ -92,18 +104,15 @@
           "id": "B",
           "type_id": 1
         }
+      },
+      {
+        "SpecialToken": {
+          "id": "<sep>",
+          "type_id": 1
+        }
       }
     ],
     "special_tokens": {
-      "</protein>": {
-        "id": "</protein>",
-        "ids": [
-          1
-        ],
-        "tokens": [
-          "</protein>"
-        ]
-      },
       "<protein>": {
         "id": "<protein>",
         "ids": [
@@ -111,6 +120,15 @@
         ],
         "tokens": [
           "<protein>"
+        ]
+      },
+      "<sep>": {
+        "id": "<sep>",
+        "ids": [
+          1
+        ],
+        "tokens": [
+          "<sep>"
         ]
       }
     }
@@ -126,7 +144,7 @@
     "byte_fallback": false,
     "vocab": {
       "<protein>": 0,
-      "</protein>": 1,
+      "<sep>": 1,
       "<pad>": 2,
       "<unk>": 3,
       "<mask>": 4,
