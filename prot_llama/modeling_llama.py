@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn
 from transformers import PreTrainedModel
 from transformers import LlamaConfig
-from transformers.modeling_outputs import BaseModelOutputWithPast
+from transformers.modeling_outputs import BaseModelOutput
 from transformers.models.llama.modeling_llama import LlamaAttention
 from transformers.models.llama.modeling_llama import LlamaMLP, LlamaRMSNorm, LlamaRotaryEmbedding
 from transformers.models.llama.modeling_llama import apply_rotary_pos_emb, repeat_kv
@@ -36,19 +36,6 @@ class ProtLlamaEncoderLayer(nn.Module):
         use_cache: Optional[bool] = False,
         padding_mask: Optional[torch.LongTensor] = None,
     ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
-        """
-        Args:
-            hidden_states (`torch.FloatTensor`): input to the layer of shape `(batch, seq_len, embed_dim)`
-            attention_mask (`torch.FloatTensor`, *optional*): attention mask of size
-                `(batch, 1, tgt_len, src_len)` where padding elements are indicated by very large negative values.
-            output_attentions (`bool`, *optional*):
-                Whether or not to return the attentions tensors of all attention layers. See `attentions` under
-                returned tensors for more detail.
-            use_cache (`bool`, *optional*):
-                If set to `True`, `past_key_values` key value states are returned and can be used to speed up decoding
-                (see `past_key_values`).
-            past_key_value (`Tuple(torch.FloatTensor)`, *optional*): cached past key and value projection states
-        """
 
         residual = hidden_states
 
@@ -355,7 +342,7 @@ class ProtLlamaEncoder(PreTrainedModel):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
-    ) -> Union[Tuple, BaseModelOutputWithPast]:
+    ) -> Union[Tuple, BaseModelOutput]:
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -406,8 +393,7 @@ class ProtLlamaEncoder(PreTrainedModel):
             else:
                 padding_mask = None
 
-        extended_attention_mask = self._create_encoder_attention_mask(
-            attention_mask)
+        extended_attention_mask = self._create_encoder_attention_mask(attention_mask)
 
         hidden_states = inputs_embeds
 
@@ -458,9 +444,8 @@ class ProtLlamaEncoder(PreTrainedModel):
         if not return_dict:
             return tuple(v for v in [hidden_states, next_cache, all_hidden_states, all_self_attns] if v is not None)
 
-        return BaseModelOutputWithPast(
+        return BaseModelOutput(
             last_hidden_state=hidden_states,
-            past_key_values=next_cache,
             hidden_states=all_hidden_states,
             attentions=all_self_attns,
         )
