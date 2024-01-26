@@ -6,15 +6,23 @@ build-backend = "setuptools.build_meta"
 name = "prot_llama"
 version = "0.1"
 authors = [
-  { name="Khairi Abidi", email="khair.abidi@majesteye.com" },
+  { name="Khairi Abidi", email="khairi.abidi@majesteye.com" },
 ]
-description = "A suite LLama models for protein modeling"
+description = "LLama models for protein modeling"
 readme = "README.md"
 requires-python = ">=3.8"
+dependencies = [
+    "torch>=2.1.0",
+    "transformers>=4.34.0",
+    "tokenizers>=0.14.1"
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [project.urls]
 Homepage = "https://github.com/abidikhairi/ProtLlama"

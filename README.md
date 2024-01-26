@@ -1,2 +1,2 @@
 ## Protein Llama
-Llama encoder for the protein space
+Llama models for protein language modeling
