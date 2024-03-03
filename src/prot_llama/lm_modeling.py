@@ -3,83 +3,53 @@ import logging
 from typing import Optional, Tuple, Union
 import torch
 from torch import nn
+from transformers import PreTrainedModel
+from transformers.modeling_outputs import MaskedLMOutput
 
-from transformers import PreTrainedModel, LlamaConfig
-from transformers.activations import ACT2FN
-from transformers.modeling_outputs import MaskedLMOutput, BaseModelOutputWithPast
+from prot_llama.modeling_prot_llama import ProtLlamaEncoder
+from prot_llama.configuration_prot_llama import ProtLlamaConfig
 
-from prot_llama.modeling_llama import ProtLlamaEncoder
 
 logger = logging.getLogger(__name__)
 
 
-class ProtLlamaPredictionHeadTransform(nn.Module):
-    def __init__(self, config):
-        super().__init__()
-        self.dense = nn.Linear(config.hidden_size, config.hidden_size)
-        if isinstance(config.hidden_act, str):
-            self.transform_act_fn = ACT2FN[config.hidden_act]
-        else:
-            self.transform_act_fn = config.hidden_act
-        self.layer_norm = nn.LayerNorm(
-            config.hidden_size, eps=config.rms_norm_eps)
-
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        hidden_states = self.dense(hidden_states)
-        hidden_states = self.transform_act_fn(hidden_states)
-        hidden_states = self.layer_norm(hidden_states)
-        return hidden_states
-
-
-class ProtLlamaLMPredictionHead(nn.Module):
+class ProtLlamaPredictionHead(nn.Module):
     def __init__(self, config):
         super().__init__()
 
-        self.transform = ProtLlamaPredictionHeadTransform(config)
-        self.decoder = nn.Linear(
-            config.hidden_size, config.vocab_size, bias=False)
+        self.decoder = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
     def forward(self, hidden_states):
-        hidden_states = self.transform(hidden_states)
+        
         hidden_states = self.decoder(hidden_states)
         return hidden_states
 
 
-class ProtLlamaOnlyMLMHead(nn.Module):
-    def __init__(self, config):
+class ProtLlamaMLMHead(nn.Module):
+    def __init__(self, config: ProtLlamaConfig):
         super().__init__()
-        self.predictions = ProtLlamaLMPredictionHead(config)
+        self.predictions = ProtLlamaPredictionHead(config)
 
     def forward(self, sequence_output: torch.Tensor) -> torch.Tensor:
         prediction_scores = self.predictions(sequence_output)
         return prediction_scores
 
 
-class ProtLlamaForMaskedLM(PreTrainedModel):
+class ProtLlama(PreTrainedModel):
+    config_class = ProtLlamaConfig
 
-    config_class = LlamaConfig
-
-    def __init__(self, config):
+    def __init__(self, config: ProtLlamaConfig):
         super().__init__(config)
 
         if config.is_decoder:
             raise ValueError(
-                "If you want to use `LLamaForMaskedLM` make sure `config.is_decoder=False` for "
+                "If you want to use `PortLlama` make sure `config.is_decoder=False` for "
                 "bi-directional self-attention."
             )
 
         self.prot_llama = ProtLlamaEncoder(config)
-        self.cls = ProtLlamaOnlyMLMHead(config)
+        self.cls = ProtLlamaMLMHead(config)
         self.post_init()
-
-    @torch.no_grad()
-    def embeddings(self, input_ids: Optional[torch.Tensor] = None,
-                   attention_mask: Optional[torch.Tensor] = None) -> BaseModelOutputWithPast:
-
-        return self.prot_llama(
-            input_ids,
-            attention_mask=attention_mask
-        )
 
     def forward(
         self,
@@ -109,8 +79,9 @@ class ProtLlamaForMaskedLM(PreTrainedModel):
         prediction_scores = self.cls(sequence_output)
 
         masked_lm_loss = None
+
         if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()  # -100 index = padding token
+            loss_fct = nn.CrossEntropyLoss(ignore_index=-100)  # -100 index = padding token
             masked_lm_loss = loss_fct(
                 prediction_scores.view(-1, self.config.vocab_size), labels.view(-1))
 
