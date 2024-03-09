@@ -1,14 +1,15 @@
 """ProtLLama model."""
 import logging
 import math
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, Union
 import torch
 import torch.nn.functional as F
 from torch import nn
 from transformers import PreTrainedModel
-from transformers import LlamaConfig
 from transformers.activations import ACT2FN
 from transformers.modeling_outputs import BaseModelOutput
+
+from prot_llama.configuration_prot_llama import ProtLlamaConfig
 
 
 logger = logging.getLogger(__name__)
@@ -86,6 +87,11 @@ class ProtLlamaAttention(nn.Module):
         self.max_position_embeddings = config.max_position_embeddings
         self.rope_theta = config.rope_theta
 
+        self.q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=config.attention_bias)
+        self.k_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias)
+        self.v_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=config.attention_bias)
+        self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=config.attention_bias)
+
         self.rotary_emb = ProtLlamaRotaryEmbedding(
             self.head_dim,
             max_position_embeddings=self.max_position_embeddings,
@@ -101,6 +107,7 @@ class ProtLlamaAttention(nn.Module):
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
         output_attentions: bool = False,
+        padding_mask: Optional[torch.LongTensor] = None,
         use_cache: bool = False,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         bsz, seq_len, _ = hidden_states.size()
@@ -191,7 +198,7 @@ class ProtLlamaRMSNorm(nn.Module):
 
 
 class ProtLlamaLayer(nn.Module):
-    def __init__(self, config: LlamaConfig):
+    def __init__(self, config: ProtLlamaConfig):
         super().__init__()
         self.hidden_size = config.hidden_size
         self.self_attn = ProtLlamaAttention(config=config)
@@ -241,9 +248,9 @@ class ProtLlamaLayer(nn.Module):
 
 
 class ProtLlamaEncoder(PreTrainedModel):
-    config_class = LlamaConfig
+    config_class = ProtLlamaConfig
 
-    def __init__(self, config: LlamaConfig):
+    def __init__(self, config: ProtLlamaConfig):
         super().__init__(config)
 
         self.padding_idx = config.pad_token_id
